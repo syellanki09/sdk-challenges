@@ -1,0 +1,214 @@
+<html>
+  <head>
+    <meta property="article:published_time" content="2024-09-10T17:43:00Z">
+    <title>Why Direct RPC Integrations Break Down at Scale</title>
+  </head>
+
+  <body>
+    <h1>Why Direct RPC Integrations Break Down at Scale</h1>
+
+    <p><em>
+      This article reflects my personal experience working on large-scale backend platforms.
+      All examples are intentionally generalized and do not reference proprietary systems,
+      internal implementations, or confidential data.
+    </em></p>
+
+    <h2>Introduction</h2>
+
+    <p>
+      For a long time, my default instinct as a backend engineer was simple:
+    </p>
+
+    <p><strong>
+      “Give me the service definition and I’ll wire the client myself.”
+    </strong></p>
+
+    <p>
+      Direct RPC integrations—whether gRPC stubs or hand-rolled HTTP clients—felt clean and
+      professional. They offered transparency, control, and minimal abstraction. SDKs, by
+      contrast, often looked like unnecessary indirection.
+    </p>
+
+    <p>
+      That belief didn’t survive a large-scale personalization rollout.
+    </p>
+
+    <p>
+      Once multiple teams started consuming a shared personalization platform across search,
+      discovery, detail pages, and checkout, a clear pattern emerged:
+      <strong>direct service integration scales poorly once many teams are involved.</strong>
+    </p>
+
+    <p>
+      This article focuses on <em>why</em>.
+    </p>
+
+    <h2>Two Ways Teams Integrate with Platforms</h2>
+
+    <p>
+      Most teams integrating with a shared backend capability choose between two patterns.
+    </p>
+
+    <h3>Option 1: Direct RPC Integration</h3>
+    <ul>
+      <li>Generate gRPC or HTTP clients from a service definition</li>
+      <li>Call the service directly from each consumer</li>
+      <li>Own timeouts, retries, mapping, metrics, and error handling locally</li>
+    </ul>
+
+    <h3>Option 2: Client SDK</h3>
+    <ul>
+      <li>Depend on a shared library</li>
+      <li>Use domain-level APIs</li>
+      <li>Centralize transport, resilience, and observability</li>
+    </ul>
+
+    <p>
+      On paper, both approaches can return the same data.
+      In practice, their long-term behavior diverges sharply.
+    </p>
+
+    <h2>Direct RPC Integration at Scale (Conceptual)</h2>
+
+<figure>
+  <img
+    src="assets/images/direct-rpc-at-scale.png"
+    alt="Direct RPC integration at scale showing multiple consumer services connecting directly to a shared platform service, with each consumer owning its own client logic"
+    style="max-width: 100%; height: auto;"
+  />
+  <figcaption>
+    <em>
+      Each consumer independently implements request mapping, retries, and observability when integrating directly with the platform service.
+    </em>
+  </figcaption>
+</figure>
+
+
+    <p>
+      <em>
+        Each consumer independently implements mapping, resilience, and observability.
+      </em>
+    </p>
+
+    <h2>Where Direct RPC Starts to Fail</h2>
+
+    <h3>1. Every Team Quietly Builds the Same Client</h3>
+
+    <p>
+      Service schemas expose low-level details:
+    </p>
+
+    <ul>
+      <li>Deeply nested messages</li>
+      <li>Enums encoding provenance or source</li>
+      <li>Optional fields requiring deep domain context</li>
+    </ul>
+
+    <p>
+      To make this usable, each team builds its own translation layer:
+    </p>
+
+    <ul>
+      <li>Mapping wire formats to local domain models</li>
+      <li>Defaulting missing data</li>
+      <li>Handling edge cases and “impossible” states</li>
+    </ul>
+
+    <p>
+      After a few months, multiple incompatible interpretations of the same concept
+      appear across services.
+    </p>
+
+    <p>
+      If every team is writing the same translation logic, the abstraction is in the wrong place.
+    </p>
+
+    <h3>2. Schema Evolution Becomes a Coordination Problem</h3>
+
+    <p>
+      Backend platforms evolve continuously:
+    </p>
+
+    <ul>
+      <li>New enum values</li>
+      <li>Additional fields</li>
+      <li>New nested structures</li>
+    </ul>
+
+    <p>
+      Even backward-compatible changes can be behaviorally incompatible:
+    </p>
+
+    <ul>
+      <li>Enum parsing fails on new values</li>
+      <li>Logic assumes a closed world</li>
+      <li>Serialization mismatches leak downstream</li>
+    </ul>
+
+    <p>
+      Each change becomes a coordination exercise across teams.
+      The platform’s ability to evolve becomes constrained by its most fragile consumer.
+    </p>
+
+    <h3>3. Observability Fragments Immediately</h3>
+
+    <p>
+      With direct integration, each consumer decides:
+    </p>
+
+    <ul>
+      <li>What metrics to emit</li>
+      <li>How to tag them</li>
+      <li>How (or whether) to log context</li>
+    </ul>
+
+    <p>
+      Answering a simple question like <em>“Why are calls slower this week?”</em>
+      requires stitching together dashboards and logs from multiple services,
+      each speaking a different dialect.
+    </p>
+
+    <p>
+      There is no single, consistent view of platform health.
+    </p>
+
+    <h3>4. Resilience Becomes a Local Guess</h3>
+
+    <p>
+      Each team independently configures:
+    </p>
+
+    <ul>
+      <li>Timeouts</li>
+      <li>Retry behavior</li>
+      <li>Circuit breakers</li>
+    </ul>
+
+    <p>
+      During incidents, behavior becomes uneven.
+      From a user’s perspective, the experience feels random—because resilience
+      was never a platform-level decision.
+    </p>
+
+    <h2>Closing Thoughts</h2>
+
+    <p>
+      Direct RPC integration works well—until it doesn’t.
+    </p>
+
+    <p>
+      Once a platform is consumed by many teams, duplicated logic, fragmented observability,
+      and inconsistent resilience grow faster than the platform itself.
+    </p>
+
+    <p>
+      At that point, the question is no longer <em>how teams call the service</em>.
+      It becomes <em>where complexity should live</em>.
+    </p>
+
+    <p>
+      That question naturally leads to an SDK-first approach.
+    </p>
+
+  </body>
+</html>
