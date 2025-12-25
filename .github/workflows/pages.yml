@@ -1,4 +1,5 @@
 name: Deploy to GitHub Pages
+
 on:
   push:
     branches:
@@ -12,6 +13,7 @@ permissions:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,9 +22,9 @@ jobs:
         uses: actions/configure-pages@v3
 
       - name: Upload static content
-        uses: actions/upload-pages-artifact@v1
+        uses: actions/upload-pages-artifact@v2
         with:
-          path: '.'   # change if you want to publish only a subfolder
+          path: '.'   # change if you want to publish a subfolder like 'dist' or 'docs'
 
       - name: Deploy to Pages
         uses: actions/deploy-pages@v1
